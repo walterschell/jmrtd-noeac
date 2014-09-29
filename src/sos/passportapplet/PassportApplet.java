@@ -181,6 +181,7 @@ public class PassportApplet extends Applet implements ISO7816 {
         switch (mode) {
         case PassportCrypto.PERFECTWORLD_MODE:
             crypto = new PassportCrypto(keyStore);
+            break;
         }
         init = new PassportInit(crypto);
 
@@ -241,7 +242,7 @@ public class PassportApplet extends Applet implements ISO7816 {
             return;
         }
 
-        if (protectedApdu & hasMutuallyAuthenticated()) {
+        if (protectedApdu && hasMutuallyAuthenticated()) {
             try {
                 le = crypto.unwrapCommandAPDU(ssc, apdu);
             } catch (CardRuntimeException e) {

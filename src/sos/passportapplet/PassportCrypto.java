@@ -206,6 +206,12 @@ public class PassportCrypto {
         if (do87DataLen != 0) {
             // decrypt data, and leave room for lc
             decryptInit();
+            decryptFinal(buf,
+                                      do87Data_p,
+                                      do87DataLen,
+                                      buf,
+                                      (short) (hdrLen + 1));
+
             plaintextLc = PassportUtil.calcLcFromPaddedData(buf,
                                                             (short) (hdrLen + 1),
                                                             do87DataLen);
