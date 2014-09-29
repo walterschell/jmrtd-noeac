@@ -4,7 +4,7 @@ PACKAGE_AID=0xA0:0x00:0x00:0x02:0x47:0x10
 APPLET_AID=0xA0:0x00:0x00:0x02:0x47:0x10:0x01
 APPLET_AID_LENGTH=7
 
-#JAVA_HOME=/usr/local/java/jdk
+JAVA_HOME=/usr
 JAVA=$(JAVA_HOME)/bin/java
 JAVAC=$(JAVA_HOME)/bin/javac
 JAVADOC=$(JAVA_HOME)/bin/javadoc
