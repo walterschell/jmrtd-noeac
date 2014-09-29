@@ -11,7 +11,7 @@ JAVADOC=$(JAVA_HOME)/bin/javadoc
 
 # java card kit must be version 2.2.1 for gpshell
 #JCPATH=/usr/local/java/java_card_kit-2_2_2
-JCPATH=/usr/local/java/java_card_kit-2_2_1
+JCPATH=./java_card_kit-2_2_1
 # JCPATH=$(HOME)/java/java_card_kit-2_1_2
 # JCPATH=$(HOME)/java/java_card_kit-2_2_1
 
