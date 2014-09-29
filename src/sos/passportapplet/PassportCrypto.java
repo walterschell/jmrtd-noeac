@@ -25,13 +25,10 @@ package sos.passportapplet;
 import javacard.framework.APDU;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
-import javacard.framework.JCSystem;
 import javacard.framework.Util;
 import javacard.security.CryptoException;
 import javacard.security.DESKey;
-import javacard.security.KeyBuilder;
 import javacard.security.MessageDigest;
-import javacard.security.RSAPublicKey;
 import javacard.security.Signature;
 import javacardx.crypto.Cipher;
 
@@ -139,7 +136,6 @@ public class PassportCrypto {
         byte[] buf = apdu.getBuffer();
         short apdu_p = (short) (ISO7816.OFFSET_CDATA & 0xff);
         short start_p = apdu_p;
-        short lc = (short) (buf[ISO7816.OFFSET_LC] & 0xff);
         short le = 0;
         short do87DataLen = 0;
         short do87Data_p = 0;
@@ -206,17 +202,10 @@ public class PassportCrypto {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
 
-        short plaintextLength = 0;
         short plaintextLc = 0;
         if (do87DataLen != 0) {
             // decrypt data, and leave room for lc
             decryptInit();
-            plaintextLength = decryptFinal(buf,
-                                      do87Data_p,
-                                      do87DataLen,
-                                      buf,
-                                      (short) (hdrLen + 1));
-
             plaintextLc = PassportUtil.calcLcFromPaddedData(buf,
                                                             (short) (hdrLen + 1),
                                                             do87DataLen);

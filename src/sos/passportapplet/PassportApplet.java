@@ -129,14 +129,9 @@ public class PassportApplet extends Applet implements ISO7816 {
 
     private static final byte MRZ_TAG = 0x62;
 
-    private static final byte ECPRIVATEKEY_TAG = 0x63;
-
-    private static final byte CVCERTIFICATE_TAG = 0x64;
 
     /* status words */
     private static final short SW_OK = (short) 0x9000;
-
-    private static final short SW_REFERENCE_DATA_NOT_FOUND = (short) 0x6A88;
 
     static final short SW_INTERNAL_ERROR = (short) 0x6d66;
 
@@ -456,15 +451,7 @@ public class PassportApplet extends Applet implements ISO7816 {
             keyStore.setMutualAuthenticationKeys(buffer, macKey_p, buffer,
                     encKey_p);
             persistentState |= HAS_MUTUALAUTHENTICATION_KEYS;
-        } else if (p2 == CVCERTIFICATE_TAG) {
-        if ((byte) (persistentState & HAS_CVCERTIFICATE) == HAS_CVCERTIFICATE) {
-            // We already have the certificate initialized
-            ISOException.throwIt(SW_CONDITIONS_NOT_SATISFIED);
-        }
-        certificate.parseCertificate(buffer, buffer_p, lc, true);
-        certificate.setRootCertificate(buffer, p1);
-        persistentState |= HAS_CVCERTIFICATE;
-    } else {
+        } else {
         ISOException.throwIt(SW_INCORRECT_P1P2);
     }
     }
