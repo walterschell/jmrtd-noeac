@@ -29,7 +29,6 @@ import javacard.framework.JCSystem;
 import javacard.framework.Util;
 import javacard.security.CryptoException;
 import javacard.security.DESKey;
-import javacard.security.KeyAgreement;
 import javacard.security.KeyBuilder;
 import javacard.security.MessageDigest;
 import javacard.security.RSAPublicKey;
@@ -40,9 +39,7 @@ public class PassportCrypto {
     public static final byte ENC_MODE = 1;
     public static final byte MAC_MODE = 2;
 
-    public static final byte CREF_MODE = 3;
     public static final byte PERFECTWORLD_MODE = 4;
-    public static final byte JCOP41_MODE = 5;
     
     public static final byte INPUT_IS_NOT_PADDED = 5;
     public static final byte INPUT_IS_PADDED = 6;
@@ -57,10 +54,6 @@ public class PassportCrypto {
     KeyStore keyStore;
 
     Signature rsaSig;
-    KeyAgreement keyAgreement;
-    boolean[] eacChangeKeys;
-//    byte[] eacTerminalKeyHash;
-    private static final short EC_X_LENGTH = (short)((short)(KeyBuilder.LENGTH_EC_F2M_163 / 8)+1); 
 
     public static byte[] PAD_DATA = { (byte) 0x80, 0, 0, 0, 0, 0, 0, 0 };
 
@@ -79,11 +72,6 @@ public class PassportCrypto {
         shaDigest = MessageDigest.getInstance(MessageDigest.ALG_SHA, false);
         rsaSig = Signature.getInstance(Signature.ALG_RSA_SHA_PKCS1, false);
         rsaCiph = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
-        keyAgreement = KeyAgreement.getInstance(KeyAgreement.ALG_EC_SVDP_DH,
-                false);
-        eacChangeKeys = JCSystem.makeTransientBooleanArray((short) 1,
-                JCSystem.CLEAR_ON_DESELECT);
-
     }
 
     public void createMacFinal(byte[] msg, short msg_offset, short msg_len,
@@ -146,130 +134,6 @@ public class PassportCrypto {
         
         sig.init(k, mode);    
     }
-
-//    public short unwrapCommandAPDU_werkt(byte[] ssc, APDU aapdu) {
-//        byte[] apdu = aapdu.getBuffer();
-//        short apdu_p = (short) (ISO7816.OFFSET_CDATA & 0xff);
-//        // offset
-//        short lc = (short) (apdu[ISO7816.OFFSET_LC] & 0xff);
-//        short le = 0;
-//        short do87DataLen = 0;
-//        short do87Data_p = 0;
-//        short do87LenBytes = 0;
-//        short hdrLen = 4;
-//        short hdrPadLen = (short) (8 - hdrLen);
-//        short apduLength = (short) (hdrLen + 1 + lc);
-//
-//        aapdu.setIncomingAndReceive();
-//
-//        // sanity check
-//        if (apdu.length < (short) (apduLength + hdrPadLen + ssc.length)) {
-//            ISOException.throwIt((short)0x6d66);
-//        }
-//
-//        // pad the header, make room for ssc, so we don't have to
-//        // modify pointers to locations in the apdu later.
-//        Util.arrayCopy(apdu, (short) (hdrLen + 1), // toss away lc
-//                       apdu, (short) (hdrLen + hdrPadLen), lc);
-//        Util.arrayCopy(PassportCrypto.PAD_DATA,
-//                       (short) 0,
-//                       apdu,
-//                       hdrLen,
-//                       hdrPadLen);
-//        apduLength--;
-//        apduLength += hdrPadLen;
-//
-//        // add ssc in front (needed to calculate the mac) so we don't have to
-//        // modify pointers to locations in the apdu later.
-//        incrementSSC(ssc);
-//        Util.arrayCopy(apdu, (short) 0, apdu, (short) ssc.length, apduLength);
-//        Util.arrayCopy(ssc, (short) 0, apdu, (short) 0, (short) ssc.length);
-//
-//        apdu_p = (short) (hdrLen + hdrPadLen);
-//        apdu_p += (short) ssc.length;
-//
-//        if (apdu[apdu_p] == (byte) 0x87) {
-//            apdu_p++;
-//            // do87
-//            if ((apdu[apdu_p] & 0xff) > 0x80) {
-//                do87LenBytes = (short) (apdu[apdu_p] & 0x7f);
-//                apdu_p++;
-//            } else {
-//                do87LenBytes = 1;
-//            }
-//            if (do87LenBytes > 2) { // sanity check
-//                ISOException.throwIt((short) 0x6d66);
-//            }
-//            for (short i = 0; i < do87LenBytes; i++) {
-//                do87DataLen += (short) ((apdu[(short)(apdu_p + i)] & 0xff) << (short) ((do87LenBytes - 1 - i) * 8));
-//            }
-//            apdu_p += do87LenBytes;
-//
-//            if (apdu[apdu_p] != 1) {
-//                ISOException.throwIt((short) (0x6d66));
-//            }
-//            // store pointer to data and defer decrypt to after mac check (do8e)
-//            do87Data_p = (short) (apdu_p + 1);
-//            apdu_p += do87DataLen;
-//            do87DataLen--; // compensate for 0x01 marker
-//        }
-//
-//        if (apdu[apdu_p] == (byte) 0x97) {
-//            // do97
-//            if (apdu[++apdu_p] != 1)
-//                ISOException.throwIt((short) (0x6d66));
-//            le = (short) (apdu[++apdu_p] & 0xff);
-//            apdu_p++;
-//        }
-//
-//        // do8e
-//        if (apdu[apdu_p] != (byte) 0x8e) {
-//            ISOException.throwIt((short) (0x6d66));
-//        }
-//        if (apdu[++apdu_p] != 8) {
-//            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-//        }
-//        
-//        initMac();
-//        if (!verifyMacFinal(apdu,
-//                       (short) 0,
-//                       (short) (apdu_p - 1),
-//                       apdu,
-//                       (short)(apdu_p + 1))) {
-//            ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
-//        }
-//
-//        // construct unprotected apdu
-//        // copy back the hdr
-//        Util.arrayCopy(apdu, (short) ssc.length, apdu, (short) 0, hdrLen);
-//        apduLength -= 4;
-//
-//        short plaintextLength = 0;
-//        short plaintextLc = 0;
-//        if (do87DataLen != 0) {
-//            // decrypt data, and leave room for lc
-//            decryptInit();
-//            plaintextLength = decryptFinal(apdu,
-//                                      do87Data_p,
-//                                      do87DataLen,
-//                                      apdu,
-//                                      (short) (hdrLen + 1));
-//
-//            plaintextLc = PassportUtil.calcLcFromPaddedData(apdu,
-//                                                            (short) (hdrLen + 1),
-//                                                            do87DataLen);
-//            apdu[hdrLen] = (byte) (plaintextLc & 0xff);
-//        }
-//
-//        apduLength = (short) (hdrLen + 1 + plaintextLength);
-//
-//        // empty out the rest
-//        for (short i = apduLength; i < apdu.length; i++) {
-//            apdu[i] = 0;
-//        }
-//
-//        return le;
-//    }
 
     public short unwrapCommandAPDU(byte[] ssc, APDU apdu) {
         byte[] buf = apdu.getBuffer();
@@ -458,16 +322,6 @@ public class PassportCrypto {
         apdu[apdu_p++] = (byte) 0x8e;
         apdu[apdu_p++] = 0x08;
         apdu_p += 8; // for mac written earlier
-        if (eacChangeKeys[0]) {
-            eacChangeKeys[0] = false;
-            keyStore.setSecureMessagingKeys(keyStore.tmpKeys, (short) 0,
-                    keyStore.tmpKeys, (short) 16);
-            Util.arrayFillNonAtomic(keyStore.tmpKeys, (short) 0, (short) 32,
-                    (byte) 0x00);
-            Util.arrayFillNonAtomic(ssc, (short) 0, (short) ssc.length,
-                    (byte) 0x00);
-        }
-
         return apdu_p;
     }
 
@@ -559,67 +413,4 @@ public class PassportCrypto {
 
     }
     
-    /**
-     * Chip authentication part of EAP.
-     *
-     * @param pubData
-     *            the other parties public key data
-     * @param offset
-     *            offset to the public key data
-     * @param length
-     *            public key data length
-     *
-     * @return true when authentication successful
-     */
-    public boolean authenticateChip(byte[] pubData, short offset, short length) {
-        try {
-            // Verify public key first. i.e. see if the data is correct and
-            // makes up a valid
-            // EC public key.
-            keyStore.ecPublicKey.setW(pubData, offset, length);
-            if (!keyStore.ecPublicKey.isInitialized()) {
-                CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
-            }
-
-            // Do the key agreement and derive new session keys based on the
-            // outcome:
-            keyAgreement.init(keyStore.ecPrivateKey);
-            short secOffset = (short) (offset + length);
-            short secLength = keyAgreement.generateSecret(pubData, offset,
-                    length, pubData, secOffset);
-            // use only first 16 bytes?
-            // secLength = 16;
-            short keysOffset = (short) (secOffset + secLength);
-            deriveKey(pubData, secOffset, secLength, MAC_MODE, keysOffset);
-            short macKeyOffset = keysOffset;
-            keysOffset += PassportApplet.KEY_LENGTH;
-            deriveKey(pubData, secOffset, secLength, ENC_MODE, keysOffset);
-            short encKeyOffset = keysOffset;
-            Util.arrayCopyNonAtomic(pubData, macKeyOffset, keyStore.tmpKeys,
-                    (short) 0, PassportApplet.KEY_LENGTH);
-            Util.arrayCopyNonAtomic(pubData, encKeyOffset, keyStore.tmpKeys,
-                    PassportApplet.KEY_LENGTH, PassportApplet.KEY_LENGTH);
-            // The secure messaging keys should be replaced with the freshly
-            // computed ones
-            // just after the current APDU is completely processed.
-            eacChangeKeys[0] = true;
-            return true;
-        } catch (Exception e) {
-            eacChangeKeys[0] = false;
-            return false;
-            
-        }
-    }
-
-    boolean eacVerifySignature(RSAPublicKey key, byte[] rnd, 
-            byte[] docNr, byte[] buffer, short offset, short length) {
-        short x_offset = (short)(offset+length);
-        keyStore.ecPublicKey.getW(buffer, x_offset++);
-        rsaSig.init(key, Signature.MODE_VERIFY);
-        rsaSig.update(docNr, (short) 0, (short) docNr.length);
-        rsaSig.update(rnd, (short) 0, PassportApplet.RND_LENGTH);
-        return rsaSig.verify(buffer, x_offset, EC_X_LENGTH, buffer, offset, length);
-    }
-
-
 }

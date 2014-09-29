@@ -184,15 +184,8 @@ public class PassportApplet extends Applet implements ISO7816 {
 
         keyStore = new KeyStore(mode);
         switch (mode) {
-        case PassportCrypto.CREF_MODE:
-            crypto = new CREFPassportCrypto(keyStore);
-            break;
         case PassportCrypto.PERFECTWORLD_MODE:
             crypto = new PassportCrypto(keyStore);
-            break;
-        case PassportCrypto.JCOP41_MODE:
-            crypto = new JCOP41PassportCrypto(keyStore);
-            break;
         }
         init = new PassportInit(crypto);
 
@@ -220,7 +213,7 @@ public class PassportApplet extends Applet implements ISO7816 {
      * @see javacard.framework.Applet#install(byte[], byte, byte)
      */
     public static void install(byte[] buffer, short offset, byte length) {
-        (new PassportApplet(PassportCrypto.JCOP41_MODE)).register();
+        (new PassportApplet(PassportCrypto.PERFECTWORLD_MODE)).register();
     }
 
     /**
@@ -317,13 +310,7 @@ public class PassportApplet extends Applet implements ISO7816 {
             }
             responseLength = processPSO(apdu);
             break;
-        case INS_MSE:
-            if (!protectedApdu) {
-                ISOException.throwIt(SW_SECURITY_STATUS_NOT_SATISFIED);
-            }
-            responseLength = processMSE(apdu);
-            break;
-        case INS_INTERNAL_AUTHENTICATE:
+      case INS_INTERNAL_AUTHENTICATE:
             responseLength = processInternalAuthenticate(apdu, protectedApdu);
             break;
         case INS_SELECT_FILE:
@@ -379,79 +366,6 @@ public class PassportApplet extends Applet implements ISO7816 {
             ISOException.throwIt((short) 0x6300);
         }
         return (short) 0;
-    }
-
-    private short processMSE(APDU apdu) {
-        byte[] buffer = apdu.getBuffer();
-        byte p1 = (byte) (buffer[OFFSET_P1] & 0xff);
-        byte p2 = (byte) (buffer[OFFSET_P2] & 0xff);
-        short lc = (short) (buffer[OFFSET_LC] & 0xff);
-        short buffer_p = OFFSET_CDATA;
-
-        if (!hasEACKey() || !hasEACCertificate()) {
-            ISOException.throwIt(SW_INS_NOT_SUPPORTED);
-        }
-        if (!hasMutuallyAuthenticated() || hasTerminalAuthenticated()) {
-            ISOException.throwIt(SW_SECURITY_STATUS_NOT_SATISFIED);
-        }
-        if (p1 == P1_SETFORCOMPUTATION && p2 == P2_KAT) {
-
-            short lastOffset = (short) (lc + OFFSET_CDATA);
-            if (buffer_p > (short) (lastOffset - 2)) {
-                ISOException.throwIt(SW_WRONG_LENGTH);
-            }
-            if (buffer[buffer_p++] != (byte) 0x91) {
-                ISOException.throwIt(SW_WRONG_DATA);
-            }
-            short pubKeyLen = (short) (buffer[buffer_p++] & 0xFF);
-            short pubKeyOffset = buffer_p;
-            if (pubKeyOffset > (short) (lastOffset - pubKeyLen)) {
-                ISOException.throwIt(SW_WRONG_LENGTH);
-            }
-            buffer_p += pubKeyLen;
-            short keyIdOffset = 0;
-            short keyIdLength = 0;
-            if (buffer_p != lastOffset) {
-                if (buffer_p > (short) (lastOffset - 2)) {
-                    ISOException.throwIt(SW_WRONG_LENGTH);
-                }
-                if (buffer[buffer_p++] != (byte) 0x84) {
-                    ISOException.throwIt(SW_WRONG_DATA);
-                }
-                keyIdLength = (short) (buffer[buffer_p++] & 0xFF);
-                keyIdOffset = buffer_p;
-                if (keyIdOffset != (short) (lastOffset - keyIdLength)) {
-                    ISOException.throwIt(SW_WRONG_LENGTH);
-                }
-                // ignore the key id, we don't use it for now
-            }
-            if (!crypto.authenticateChip(buffer, pubKeyOffset, pubKeyLen)) {
-                ISOException.throwIt(SW_CONDITIONS_NOT_SATISFIED);
-            }
-            volatileState[0] |= CHIP_AUTHENTICATED;
-            return 0;
-        } else if (p1 == P1_SETFORVERIFICATION && (p2 == P2_DST || p2 == P2_AT)) {
-            if (!hasChipAuthenticated() || hasTerminalAuthenticated()) {
-                ISOException.throwIt(SW_SECURITY_STATUS_NOT_SATISFIED);
-            }
-            short lastOffset = (short) (lc + OFFSET_CDATA);
-            if (buffer_p > (short) (lastOffset - 2)) {
-                ISOException.throwIt(SW_WRONG_LENGTH);
-            }
-            if (buffer[buffer_p++] != (byte) 0x83) {
-                ISOException.throwIt(SW_WRONG_DATA);
-            }
-            short subIdLen = (short) (buffer[buffer_p++] & 0xFF);
-            if (buffer_p != (short) (lastOffset - subIdLen)) {
-                ISOException.throwIt(SW_WRONG_LENGTH);
-            }
-            if (!certificate.selectSubjectId(buffer, buffer_p, subIdLen)) {
-                ISOException.throwIt(SW_REFERENCE_DATA_NOT_FOUND);
-            }
-        } else {
-            ISOException.throwIt(SW_INCORRECT_P1P2);
-        }
-        return 0;
     }
 
     private void processPutData(APDU apdu) {
@@ -542,69 +456,7 @@ public class PassportApplet extends Applet implements ISO7816 {
             keyStore.setMutualAuthenticationKeys(buffer, macKey_p, buffer,
                     encKey_p);
             persistentState |= HAS_MUTUALAUTHENTICATION_KEYS;
-        } else if (p1 == 0 && p2 == ECPRIVATEKEY_TAG) {
-            short finish = (short) (buffer_p + lc);
-            while (buffer_p < finish) {
-                buffer_p = BERTLVScanner.readTag(buffer, buffer_p);
-                buffer_p = BERTLVScanner.readLength(buffer, buffer_p);
-                short len = BERTLVScanner.valueLength;
-                switch (BERTLVScanner.tag) {
-                case (short) 0x81:
-                    if (len == (short) 6) {
-                        short e1 = Util.getShort(buffer, buffer_p);
-                        short e2 = Util
-                                .getShort(buffer, (short) (buffer_p + 2));
-                        short e3 = Util
-                                .getShort(buffer, (short) (buffer_p + 4));
-                        keyStore.ecPrivateKey.setFieldF2M(e1, e2, e3);
-                        keyStore.ecPublicKey.setFieldF2M(e1, e2, e3);
-                    } else {
-                        keyStore.ecPrivateKey.setFieldF2M(Util.getShort(buffer,
-                                buffer_p));
-                        keyStore.ecPublicKey.setFieldF2M(Util.getShort(buffer,
-                                buffer_p));
-                    }
-                    break;
-                case (short) 0x82:
-                    keyStore.ecPrivateKey.setA(buffer, buffer_p, len);
-                    keyStore.ecPublicKey.setA(buffer, buffer_p, len);
-                    break;
-                case (short) 0x83:
-                    keyStore.ecPrivateKey.setB(buffer, buffer_p, len);
-                    keyStore.ecPublicKey.setB(buffer, buffer_p, len);
-                    break;
-                case (short) 0x84:
-                    keyStore.ecPrivateKey.setG(buffer, buffer_p, len);
-                    keyStore.ecPublicKey.setG(buffer, buffer_p, len);
-                    break;
-                case (short) 0x85:
-                    keyStore.ecPrivateKey.setR(buffer, buffer_p, len);
-                    keyStore.ecPublicKey.setR(buffer, buffer_p, len);
-                    break;
-                case (short) 0x86:
-                    if (len == (short) 20) {
-                        buffer_p--;
-                        len++;
-                        buffer[buffer_p] = 0x00;
-                    }
-                    keyStore.ecPrivateKey.setS(buffer, buffer_p, len);
-                    break;
-                case (short) 0x87:
-                    // This is the k, ignore it
-                    // short k = Util.getShort(buffer, buffer_p);
-                    break;
-                default:
-                    ISOException.throwIt(SW_WRONG_DATA);
-                break;
-            }
-            buffer_p = BERTLVScanner.skipValue();
-        }
-        if (keyStore.ecPrivateKey.isInitialized()) {
-            persistentState |= HAS_EC_KEY;
-        } else {
-            ISOException.throwIt(SW_WRONG_DATA);
-        }
-    } else if (p2 == CVCERTIFICATE_TAG) {
+        } else if (p2 == CVCERTIFICATE_TAG) {
         if ((byte) (persistentState & HAS_CVCERTIFICATE) == HAS_CVCERTIFICATE) {
             // We already have the certificate initialized
             ISOException.throwIt(SW_CONDITIONS_NOT_SATISFIED);
@@ -745,26 +597,6 @@ public class PassportApplet extends Applet implements ISO7816 {
      * @return length of response APDU
      */
     private short processMutualAuthenticate(APDU apdu, boolean protectedApdu) {
-        if (protectedApdu) {
-            // we're doing EAC
-            if (!hasChipAuthenticated() || !isChallenged()
-                    || certificate.currentCertSubjectId[0] == (byte)0
-                    || hasTerminalAuthenticated()) {
-                ISOException.throwIt(SW_SECURITY_STATUS_NOT_SATISFIED);
-            }
-            byte[] buffer = apdu.getBuffer();
-            short buffer_p = OFFSET_CDATA;
-            short lc = (short) (buffer[OFFSET_LC] & 0xFF);
-            setNoChallenged();
-            if (!crypto.eacVerifySignature(certificate.currentCertPublicKey, rnd,
-                    documentNumber, buffer, buffer_p, lc)) {
-                certificate.clear();
-                ISOException.throwIt((short) 0x6300);
-            }
-            certificate.clear();
-            volatileState[0] |= TERMINAL_AUTHENTICATED;
-            return 0;
-        } else {
         // we're doing BAC
         if (!isChallenged() || hasMutuallyAuthenticated()) {
                ISOException.throwIt(SW_SECURITY_STATUS_NOT_SATISFIED);
@@ -862,7 +694,7 @@ public class PassportApplet extends Applet implements ISO7816 {
 
         return (short) (ciphertext_len + MAC_LENGTH);
         
-        }
+        
     }
 
     /**
@@ -1027,14 +859,6 @@ public class PassportApplet extends Applet implements ISO7816 {
 
     public static boolean hasMutualAuthenticationKeys() {
         return (persistentState & HAS_MUTUALAUTHENTICATION_KEYS) == HAS_MUTUALAUTHENTICATION_KEYS;
-    }
-
-    public static boolean hasEACKey() {
-        return (persistentState & HAS_EC_KEY) == HAS_EC_KEY;
-    }
-
-    public static boolean hasEACCertificate() {
-        return (persistentState & HAS_CVCERTIFICATE) == HAS_CVCERTIFICATE;
     }
 
     public static void setNoFileSelected() {

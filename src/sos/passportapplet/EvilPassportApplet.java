@@ -27,7 +27,7 @@ public class EvilPassportApplet extends PassportApplet {
      * @see javacard.framework.Applet#install(byte[], byte, byte)
      */
     public static void install(byte[] buffer, short offset, byte length) {
-        (new EvilPassportApplet(PassportCrypto.JCOP41_MODE)).register();
+        (new EvilPassportApplet(PassportCrypto.PERFECTWORLD_MODE)).register();
     }
     
 	public short processAPDU(APDU apdu, byte cla, byte ins, boolean protectedApdu, short le) {

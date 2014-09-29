@@ -60,7 +60,6 @@ public class KeyStore {
                                                false);
 
         switch(mode) {
-        case PassportCrypto.JCOP41_MODE:
         case PassportCrypto.PERFECTWORLD_MODE:
             rsaPrivateKey = (RSAPrivateKey)KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_1024,  false);
             rsaPublicKey =  (RSAPublicKey)KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_1024,  false);
@@ -77,21 +76,6 @@ public class KeyStore {
             ma_kMac = (DESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_DES,
                                                    KeyBuilder.LENGTH_DES3_2KEY,
                                                    false);
-            break;
-        case PassportCrypto.CREF_MODE:
-        case PassportCrypto.JCOP41_MODE:
-            sm_kMac_a = (DESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_DES_TRANSIENT_RESET,
-                                                     KeyBuilder.LENGTH_DES,
-                                                     false);
-            sm_kMac_b = (DESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_DES_TRANSIENT_RESET,
-                                                     KeyBuilder.LENGTH_DES,
-                                                     false);
-            ma_kMac_a = (DESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_DES,
-                                                     KeyBuilder.LENGTH_DES,
-                                                     false);
-            ma_kMac_b = (DESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_DES,
-                                                     KeyBuilder.LENGTH_DES,
-                                                     false);
             break;
         }
         tmpKeys = JCSystem.makeTransientByteArray((short)32, JCSystem.CLEAR_ON_DESELECT);
@@ -141,11 +125,6 @@ public class KeyStore {
         case PassportCrypto.PERFECTWORLD_MODE:
             ma_kMac.setKey(kMac, kMac_offset);
             break;
-        case PassportCrypto.CREF_MODE:
-        case PassportCrypto.JCOP41_MODE:
-            ma_kMac_a.setKey(kMac, kMac_offset);
-            ma_kMac_b.setKey(kMac, (short)(kMac_offset + 8));
-            break;
         }
     }
 
@@ -154,11 +133,6 @@ public class KeyStore {
         switch(mode) {
         case PassportCrypto.PERFECTWORLD_MODE:
             sm_kMac.setKey(kMac, kMac_offset);
-            break;
-        case PassportCrypto.CREF_MODE:
-        case PassportCrypto.JCOP41_MODE:
-            sm_kMac_a.setKey(kMac, kMac_offset);
-            sm_kMac_b.setKey(kMac, (short)(kMac_offset + 8));
             break;
         }
     }
