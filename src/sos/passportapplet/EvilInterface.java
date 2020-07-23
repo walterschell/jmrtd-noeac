@@ -40,7 +40,7 @@ public interface EvilInterface
    static final byte INS_OPEN_BACKDOOR = 0x66;
       // p0, p1 == 0, le = length (access code), data = access code
       // returns interface version number upon success
-      static final byte[] ACCESS_CODE = {(byte) 0xAC, (byte) 0xCE, (byte) 0x55};
+      //static final byte[] ACCESS_CODE = {(byte) 0xAC, (byte) 0xCE, (byte) 0x55};
    static final byte INS_CLOSE_BACKDOOR = 0x67;
       // p0, p1, le ignored
 
